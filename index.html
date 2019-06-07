@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+  <title>Big</title>
+  <link href='big.css' rel='stylesheet' type='text/css' />
+  <link href='highlight.css' rel='stylesheet' type='text/css' />
+  <style>
+    .new-shiny { background: #aaaaaa; }
+  </style>
+  <script src='big.js'></script>
+  <script src='highlight.js'></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</head>
+<body class='dark'>
+  <div class="title">
+    <div style="height: 30%">
+      Stream <em>into</em> the <em>Future</em>
+    </div>
+    <div style="font-size: 0.2em">
+      <span class="supersplit">@</span>matteocollina
+    </div>
+  </div>
+  <div>
+    <img src='./nearform.svg' width='100'>
+  </div>
+  <div>
+    <em>What</em> is a <em>Stream</em>?
+  </div>
+  <div>
+    A <em>stream</em> is like an <em>Array</em> over <em>time</em>
+  </div>
+  <div>
+    <em>Who</em> understand <em>Node.js</em> <em>Streams</em> anyway?
+  </div>
+  <div>
+    <em>Node.js</em> streams are based on <em>EventEmitter</em>
+    <ul>
+      <li>stream.on('data')</li>
+      <li>stream.on('readable')</li>
+      <li>stream.on('close')</li>
+      <li>stream.on('end')</li>
+      <li>stream.on('finish')</li>
+      <li>stream.destroy()</li>
+    </ul>
+  </div>
+  <div>
+    Reading from a stream, the <em>'data'</em> way
+    <pre><code class=javascript>
+const { createReadStream } = require('fs')
+const stream = createReadStream('./big-file')
+// push based
+stream.on('data', (chunk) => {
+  // do something with the chunk
+})
+stream.on('end', () => {
+  // stream finished
+})
+    </code></pre>
+  </div>
+  <div>
+    Handling <em>backpressure</em> is <em>hard</em>.
+  </div>
+  <div>
+    Reading from a stream, the <em>'readable'</em> way
+    <pre><code class=javascript>
+const { createReadStream } = require('fs')
+const stream = createReadStream('./big-file')
+// pull based
+stream.on('readable', (chunk) => {
+  let chunk
+  while ((chunk = stream.read()) !== null) {
+    // do something with the chunk
+  }
+})
+stream.on('end', () => {
+  // stream finished
+})
+    </code></pre>
+  </div>
+  <div>
+    Using <em>'readable'</em> is more performant,
+    but <em>hard</em> to use.
+  </div>
+  <div>
+    <em>Error</em> handling is <em>complex</em>
+  </div>
+  <div>
+    How to <em>not</em> stream a file over http
+    <pre><code class=javascript>
+const { createReadStream } = require('fs')
+const { createServer } = require('http')
+const server = createServer(
+  (req, res) => {
+    createReadStream(__filename).pipe(res)
+  }
+)
+server.listen(3000)
+    </code></pre>
+  </div>
+  <div>
+    How to <em>correctly</em> stream a file over http
+    <pre><code class=javascript>
+const { createReadStream } = require('fs')
+const { pipeline } = require('stream')
+const { createServer } = require('http')
+const server = createServer(
+  (req, res) => {
+    // automatically destroy res if there is an error
+    pipeline(createReadStream(__filename), pipe(res), (err) => {
+      if (err) console.error(err)
+    })
+  }
+)
+server.listen(3000)
+    </code></pre>
+  </div>
+  <div>
+    Use a <em>framework</em>!
+    <pre><code class=javascript>
+const { join } = require('path')
+const serve = require('fastify-static')
+const app = require('fastify')({
+  logger: true
+})
+app.register(serve, {
+  root: join(__dirname, 'public')
+})
+app.listen(3000).catch(console.error)
+    </code></pre>
+  </div>
+  <div>
+    <em>All</em> the best features of <em>Node.js</em> relies on <em>Streams</em>
+  </div>
+  <div>
+    The <em>JavaScript</em> community loves <em>async/await</em> and <em>Promises</em>
+  </div>
+  <div>
+    Node.js streams do <em>NOT</em> work well with <em>Promises</em>
+  </div>
+  <div>
+    <em>Changing</em> the behavior of <em>Node.js streams</em> will <em>break</em> everybody.
+  </div>
+  <div>
+    <em>How</em> can we improve usability of <em>Node.js streams</em>?
+  </div>
+  <div>
+    <em>Async</em> <em>Iterators</em>
+  </div>
+  <div>
+    <pre><code class=javascript>
+const { promisify } = require('util')
+const sleep = promisify(setTimeout)
+
+async function * generate () {
+  yield 'hello'
+  await sleep(10)
+  yield ' '
+  await sleep(10)
+  yield 'world'
+}
+
+async function consume (iterator) {
+  let strings = ''
+  for await (let chunk of iterator) {
+    strings += chunk
+  }
+  return strings
+}
+
+// output "hello world"
+consume(generate()).then(console.log)
+    </code></pre>
+  </div>
+  <div>
+    The Node.js streams <em>working group</em> worked with <em>TC39</em> to ensure
+    Node.js streams could be <em>compatible</em> with AsyncIterator!
+  </div>
+  <div>
+    <pre><code class=javascript>
+const { createReadStream } = require('fs')
+
+async function run () {
+  const stream = createReadStream('./big-file')
+  for await (let chunk of stream) {
+    // do something with chunk
+  }
+  // stream is ended
+}
+
+run()
+    </code></pre>
+  </div>
+  <div>
+    In Node 12, You can easily create a stream from a <em>generator</em>!
+    <pre><code class=javascript>
+const { Readable, pipeline } = require('stream');
+const { createWriteStream } = require('fs')
+
+function * generate() {
+  yield 'hello';
+  yield 'streams';
+}
+
+const stream = Readable.from(generate());
+pipeline(stream, createWriteStream('./dest'), (err) => {
+  if (err) console.log(err)
+})
+
+    </code></pre>
+  </div>
+  <div>
+    <em>Async</em> generators are also amazing!
+    <pre><code class=javascript>
+const { Readable } = require('stream');
+
+async function * generate() {
+  yield 'hello';
+  yield 'streams';
+}
+
+async function run () {
+  // this is object mode by default
+  const stream = Readable.from(generate());
+
+  for await (let chunk of stream) {
+    // do something with chunk
+  }
+  // stream is ended
+}
+
+run()
+    </code></pre>
+  </div>
+  <div class="title">Demo!</div>
+  <div>
+    <em>What</em> is missing?
+  </div>
+  <div>
+    Converting an <em>async iterator</em> to a <em>Transform</em> <em>could</em> be a thing!
+    <pre><code class=javascript>
+const { Transform, pipeline } = require('stream')
+const { createReadStream, createWriteStream } = require('fs')
+
+async function * transform(source) {
+  for await (let chunk of source) {
+    yield chunk.toString().toUpperCase()
+  }
+}
+
+pipeline(
+  createReadStream('./big-file'),
+  Transform.from(transform),
+  createWriteStream('./dest'),
+  (err) => {
+    if (err) console.log(err)
+  }
+)
+    </pre></code>
+  </div>
+  <div>
+    Maybe we can even <em>avoid</em> creating a <em>Transform</em>
+    <pre><code class=javascript>
+const { pipeline } = require('stream')
+const { createReadStream, createWriteStream } = require('fs')
+
+pipeline(
+  createReadStream('./big-file'),
+  async function * transform(source) {
+    for await (let chunk of source) {
+      yield chunk.toString().toUpperCase()
+    }
+  },
+  createWriteStream('./dest'),
+  (err) => {
+    if (err) console.log(err)
+  }
+)
+    </pre></code>
+  </div>
+  <div>
+    What <em>about</em> <em>Writable</em>?
+  </div>
+  <div>
+    <pre><code class=javascript>
+"use strict";
+
+const stream = require("stream");
+const { Readable, once } = stream;
+const { promisify } = require('util');
+const finished = promisify(stream.finished);
+
+async function run(origin, dest) {
+  try {
+    const write = buildWrite(dest);
+    for await (let chunk of origin) {
+      await write(chunk);
+    }
+    await finished(dest);
+  } catch (err) {
+    origin.destroy(err);
+    dest.destroy(err);
+  }
+}
+    </pre></code>
+  </div>
+  <div>
+    <pre><code class=javascript>
+function buildWrite(stream) {
+  const streamError = null;
+  stream.on("error", function(err) {
+    streamError = err;
+  });
+
+  return write;
+
+  function write(chunk) {
+    if (streamError) {
+      return Promise.reject(streamError);
+    }
+
+    const res = stream.write(chunk);
+
+    if (res) {
+      return Promise.resolve();
+    }
+
+    return once(stream, 'drain');
+  }
+}
+    </pre></code>
+  </div>
+  <div>
+    Any <em>nicer</em> ideas?
+  </div>
+  <div>
+    <em>How</em> does it all <em>work</em>?
+  </div>
+  <div>
+    ..it is <em>all</em> <em>JavaScript</em>!
+  </div>
+  <div>
+    The AsyncIterator <em>protocol</em>
+  </div>
+  <div>
+    <em>Extract</em> from Node.js <em>core</em>
+    <pre><code class=javascript>
+Readable.prototype[Symbol.asyncIterator] = function() {
+  if (createReadableStreamAsyncIterator === undefined) {
+    createReadableStreamAsyncIterator =
+      require('internal/streams/async_iterator');
+  }
+  return createReadableStreamAsyncIterator(this);
+};
+    </pre></code>
+  </div>
+  <div>
+    <em>Extract</em> from Node.js <em>core</em>
+    <pre><code class=javascript>
+const AsyncIteratorPrototype = Object.getPrototypeOf(
+  Object.getPrototypeOf(async function* () {}).prototype);
+const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
+  get stream() {
+    return this[kStream];
+  },
+
+  async next() {
+    // omitted
+  }
+
+  async return() {
+    // omitted
+  }
+}, AsyncIteratorPrototype);
+    </pre></code>
+  </div>
+  <div>
+    <em>Internally</em>, we <em>wrap</em> the <em>'readable'</em> event!
+  </div>
+  <div>
+    <a href="https://github.com/nodejs/node/blob/master/lib/internal/streams/async_iterator.js">https://github.com/nodejs/node/blob/master/lib/internal/streams/async_iterator.js</a>
+  </div>
+  <div>
+    There is <em>no</em> performance penalty in using AsyncIterators with streams!
+  </div>
+  <div>
+    <em>WHATWG</em> vs <em>Node.js</em> streams
+  </div>
+  <div>
+    <pre><code class=javascript>
+readableStream.pipeTo(writableStream)
+  .then(() => console.log("All data successfully written!"))
+  .catch(e => console.error("Something went wrong!", e));
+    </code></pre>
+  </div>
+  <div>
+    <em>Example</em> adapted from <em>https://github.com/mdn/dom-examples</em>
+    <pre><code class=javascript>
+const response = await fetch('./tortoise.png');
+const rs = await response.body;
+const reader = rs.getReader();
+const mystream = new ReadableStream({
+    async start(controller) {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        controller.enqueue(value);
+      }
+
+      controller.close();
+      reader.releaseLock();
+    }
+  })
+});
+
+const response = new Response(mystream)
+const blob = await response.blob()
+
+image.src = URL.createObjectURL(blob))
+    </code></pre>
+  </div>
+  <div>
+    <em>WHATWG streams</em> are <em>complex</em>
+  </div>
+  <div>
+    <h2 class="title"><span class="bubblegum">Why</span> we want them in Node.js core</h2>
+
+    <ul>
+      <li>Part of the <span class="brunchPink">Web standards</span></li>
+      <li><code>fetch()</code>?</li>
+      <li>Make things more <span class="supersplit">consistent</span> in the ecosystspan</li>
+      <li>All possible future uses!</li>
+    </ul>
+  </div>
+  <div>
+    The main <em>problem</em> of adding them to Node.js core is <em>ecosystem compatibility</em>.
+  </div>
+  <div>
+    <em>WHATWG</em> streams are going to be <em>async iterable</em>
+  </div>
+  <div>
+    We might leverage <em>async iterators</em> as our compatibility layer!
+    <pre><code class=javascript>
+// same code for Node.js stream!
+async function * consume (stream) {
+  for await (let chunk of stream) {
+    yield chunk.toString().toUpperCase()
+  }
+  // stream is ended
+}
+
+pipeline(whatwgReadable, consume, nodeWritable, console.log)
+    </code></pre>
+  </div>
+  <div>
+    Do you want to get <em>involved</em>?
+    Node.js is always looking for new <em>collaborators</em>!
+  </div>
+  <div>
+    <img src='./nearform.svg' width='100'>
+  </div>
+  <div>
+    <img src='./hiring.png' width='50%'>
+    <br>
+    <div style="text-align: center">
+      <em>https://nearform.com/careers</em>
+    </div>
+  </div>
+  <div class="title">
+    <div style="height: 30%" class="bubblegum">
+      Thanks
+    </div>
+    <div style="font-size: 0.2em">
+      <em>@</em>matteocollina
+    </div>
+  </div>
+</body>
+</html>
