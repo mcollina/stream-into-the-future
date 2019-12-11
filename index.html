@@ -239,7 +239,7 @@ run()
   </div>
   <div>
     Converting an <em>async iterator</em> to a <em>Transform</em> <em>could</em> be a thing!
-    <pre><code class=javascript>
+    <pre><code class=javascript">
 const { Transform, pipeline } = require('stream')
 const { createReadStream, createWriteStream } = require('fs')
 
@@ -251,13 +251,17 @@ async function * transform(source) {
 
 pipeline(
   createReadStream('./big-file'),
-  Transform.from(transform),
+  Transform.by(transform),
   createWriteStream('./dest'),
   (err) => {
     if (err) console.log(err)
   }
 )
     </pre></code>
+  </div>
+  <div>
+    <code class="javascript">Transform.by(fn)</code> is being <em>worked on</em> at
+    <a href="https://github.com/nodejs/node/pull/28501">https://github.com/nodejs/node/pull/28501</a>
   </div>
   <div>
     Maybe we can even <em>avoid</em> creating a <em>Transform</em>
@@ -400,6 +404,10 @@ readableStream.pipeTo(writableStream)
 const response = await fetch('./tortoise.png');
 const rs = await response.body;
 const reader = rs.getReader();
+    </code></pre>
+  </div>
+  <div>
+    <pre><code class=javascript>
 const mystream = new ReadableStream({
     async start(controller) {
       while (true) {
@@ -417,10 +425,12 @@ const mystream = new ReadableStream({
     }
   })
 });
-
+    </code></pre>
+  </div>
+  <div>
+    <pre><code class=javascript>
 const response = new Response(mystream)
 const blob = await response.blob()
-
 image.src = URL.createObjectURL(blob))
     </code></pre>
   </div>
@@ -463,13 +473,6 @@ pipeline(whatwgReadable, consume, nodeWritable, console.log)
   </div>
   <div>
     <img src='./nearform.svg' width='100'>
-  </div>
-  <div>
-    <img src='./hiring.png' width='50%'>
-    <br>
-    <div style="text-align: center">
-      <em>https://nearform.com/careers</em>
-    </div>
   </div>
   <div class="title">
     <div style="height: 30%" class="bubblegum">
