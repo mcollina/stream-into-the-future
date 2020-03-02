@@ -1,3 +1,5 @@
+'use strict'
+
 const { createReadStream } = require('fs')
 const { Readable } = require('stream')
 

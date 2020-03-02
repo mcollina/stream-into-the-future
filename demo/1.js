@@ -1,3 +1,4 @@
+'use strict'
 
 const { Readable } = require('stream')
 
