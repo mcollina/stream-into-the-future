@@ -61,6 +61,15 @@ stream.on('end', () => {
   </div>
   <div>
     Handling <em>backpressure</em> is <em>hard</em>.
+    <pre><code class=javascript>
+stream.on('data', (chunk) => {
+  // pause, we do not want any more data
+  stream.pause()
+
+  /// ... sometimes later we want more data!
+  setImmediate(() => { stream.resume() })
+})
+    </code></pre>
   </div>
   <div>
     Reading from a stream, the <em>'readable'</em> way
@@ -129,6 +138,14 @@ app.register(serve, {
 })
 app.listen(3000).catch(console.error)
     </code></pre>
+  </div>
+  <div>
+    How do you know if a stream is <em>closed</em>?
+    <ul>
+      <li>stream.on('end')</li>
+      <li>stream.on('finish')</li>
+      <li>stream.on('close')</li>
+    </ul>
   </div>
   <div>
     <em>All</em> the best features of <em>Node.js</em> relies on <em>Streams</em>
@@ -240,8 +257,7 @@ run()
   <div>
     Converting an <em>async iterator</em> to a <em>Transform</em> <em>could</em> be a thing!
     <pre><code class=javascript">
-const { Transform, pipeline } = require('stream')
-const { createReadStream, createWriteStream } = require('fs')
+const { Transform } = require('stream')
 
 async function * transform(source) {
   for await (let chunk of source) {
@@ -249,14 +265,7 @@ async function * transform(source) {
   }
 }
 
-pipeline(
-  createReadStream('./big-file'),
-  Transform.by(transform),
-  createWriteStream('./dest'),
-  (err) => {
-    if (err) console.log(err)
-  }
-)
+const t = Transform.by(transform)
     </pre></code>
   </div>
   <div>
@@ -284,6 +293,12 @@ pipeline(
     </pre></code>
   </div>
   <div>
+    The key <em>benefit</em> of this approach is that the async iterator implementation has <em>no buffering</em>.
+  </div>
+  <div>
+    Thanks to the work of <em>Robert Nagi</em>, this is already landed, it will soon come to a Node.js version near you!
+  </div>
+  <div>
     What <em>about</em> <em>Writable</em>?
   </div>
   <div>
@@ -291,46 +306,21 @@ pipeline(
 "use strict";
 
 const stream = require("stream");
-const { Readable, once } = stream;
-const { promisify } = require('util');
-const finished = promisify(stream.finished);
+consr { Readable } = stream;
+const { once } = require('events');
 
 async function run(origin, dest) {
   try {
-    const write = buildWrite(dest);
-    for await (let chunk of origin) {
-      await write(chunk);
+    for await (const chunk of origin) {
+      if (!dest.write(chunk)) {
+        if (dest.destroyed) return;
+        await once(dest, 'drain');
+      }
     }
-    await finished(dest);
+    dest.end();
   } catch (err) {
     origin.destroy(err);
     dest.destroy(err);
-  }
-}
-    </pre></code>
-  </div>
-  <div>
-    <pre><code class=javascript>
-function buildWrite(stream) {
-  const streamError = null;
-  stream.on("error", function(err) {
-    streamError = err;
-  });
-
-  return write;
-
-  function write(chunk) {
-    if (streamError) {
-      return Promise.reject(streamError);
-    }
-
-    const res = stream.write(chunk);
-
-    if (res) {
-      return Promise.resolve();
-    }
-
-    return once(stream, 'drain');
   }
 }
     </pre></code>
@@ -466,6 +456,9 @@ async function * consume (stream) {
 
 pipeline(whatwgReadable, consume, nodeWritable, console.log)
     </code></pre>
+  </div>
+  <div>
+    Node.js streams <em>works well</em> with <em>Promises</em>!
   </div>
   <div>
     Do you want to get <em>involved</em>?
